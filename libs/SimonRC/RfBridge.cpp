@@ -1,24 +1,27 @@
 /*
- * RemoteControl.cpp
+ * RfBridge.cpp
  *
  *  Created on: 31.08.2017
  *      Author: maro
  */
-
-#include "RemoteControl.h"
+#include "Arduino.h"
 #include <ArduinoJson.h>
 #include "Channel.h"
+#include "lz.h"
+#include "RCChannelsEmbed.h"
+#include "RfBridge.h"
+#include "Debug.h"
 
-RemoteControl::RemoteControl(MaroWebServer *server) {
-	_myWebServer = server;
+RfBridge::RfBridge(Storage *storage) {
+	_storage = storage;
 	_transceiver = new Transceiver();//TODO: give socket here, so receiving function can report data
 }
 
-RemoteControl::~RemoteControl() {
+RfBridge::~RfBridge() {
 	// TODO Auto-generated destructor stub
 }
 
-void RemoteControl::begin(){
+void RfBridge::begin(){
 
 	_transceiver->begin();
 
@@ -30,86 +33,38 @@ void RemoteControl::begin(){
 	}
 
 
-	// register to WebGui
-	_myWebServer->http()->on("/rc", std::bind(&RemoteControl::handleWebGuiHttp, this));
-
-	//TODO: register for web socket as well?
-
 }
 
-void RemoteControl::handle(){
+void RfBridge::handle(){
 
 	_transceiver->handle();
 }
 
-/**
- *
- *  http input example:
- *		scope=rc_btn&groupIdx=0&chIdx1=0&chIdx2=2&btn=up
- *		scope=rc_btn&groupIdx=0&chIdx1=0&btn=up
- */
-void RemoteControl::handleWebGuiHttp(){
 
-	String reply = "{\"status\":";
+void RfBridge::activateChannelGroup(ChannelGroup::groupIdx_t grpIdx,String btn_pressed){
+	_channelGroupVector[grpIdx]->activateChannelGroup();
+	_channelGroupVector[grpIdx]->btn(btn_pressed);
+}
 
-	//handle server requests
+void RfBridge::activateChannel(ChannelGroup::groupIdx_t grpIdx,Channel::channelIdx_t idx){
+	Channel* chPtr = _channelGroupVector[grpIdx]->channelVector[idx];
+	chPtr->activateChannel();
+	//PRINTLN(chPtr->active());
+	//PRINTLN(chPtr->address());
+	//PRINTLN(chPtr->groupIdx());
+	//PRINTLN(chPtr->idx());
+}
 
-	if (_myWebServer->http()->args() == 0) return;
-	PRINT(" handleWebGuiHttp() http scope: ");PRINTLN(_myWebServer->http()->arg("scope"));
-	if(_myWebServer->http()->arg("scope") == "rc_btn"){
-
-
-		//prepare/activate requested group for sending:
-
-		ChannelGroup::groupIdx_t grpIdx = _myWebServer->http()->arg("groupIdx").toInt();//TODO: validity check!
-		PRINT("activating group with index: ");PRINTLN(grpIdx);
-		_channelGroupVector[grpIdx]->activateChannelGroup();
-		String btn = _myWebServer->http()->arg("btn");
-		_channelGroupVector[grpIdx]->btn(btn);
-
-
-		//prepare/activate requested channels within the group for sending:
-
-		int i = 1;
-		String chIdx = _myWebServer->http()->arg("chIdx1");
-		//std::vector<Channel*>::const_iterator channelIterator;//TODO: delete this if first solution works
-		Channel* chPtr = NULL;
-		while (chIdx != "")
-		{
-			Channel::channelIdx_t idx = chIdx.toInt();//_myWebServer->http()->arg("chIdx").toInt();
-			PRINT("requested chIdx in this group: ");PRINTLN(idx);
-			chPtr = _channelGroupVector[grpIdx]->channelVector[idx];
-			PRINTLN(chPtr->active());
-			PRINTLN(chPtr->address());
-			PRINTLN(chPtr->groupIdx());
-			PRINTLN(chPtr->idx());
-			chPtr->activateChannel();
-			i++;
-			chIdx = _myWebServer->http()->arg("chIdx" + String(i));
-			PRINT("next chIdx: ");PRINTLN(chIdx);
-			//btn = _myWebServer->http()->arg("btn" +  String(i));<-several btn's maybe for later use
-			//PRINT("next btn: ");PRINTLN(btn);
-		}
-		//initiate transmission (includes code and packet assembly)
-		PRINTLN("calling transmit now");
-		_transceiver->transmit();//TODO: transmit only when channel collection/activation successful
-
-
-	}
-	reply = reply + "\"rc_ok\"" + "}";//TODO: send answer to ack/nack to server!!
-	_myWebServer->http()->send(200, "text/plain", reply );
-	PRINTLN("");PRINTLN("Saving channel group settings: ");
-	saveRcChannelGroups();
-
-
-
+void RfBridge::commit(){
+  _transceiver->transmit();//TODO: transmit only when channel collection/activation successful
+  saveRcChannelGroups();
 }
 
 
 
 
 
-bool RemoteControl::loadRcConfig()
+bool RfBridge::loadRcConfig()
 {
 	bool retVal = true;
 
@@ -119,7 +74,7 @@ bool RemoteControl::loadRcConfig()
 	return retVal;
 }
 
-bool RemoteControl::saveRcChannelGroups()
+bool RfBridge::saveRcChannelGroups()
 {
 	bool retVal = false;
 	DynamicJsonBuffer jsonBuffer;
@@ -154,18 +109,29 @@ bool RemoteControl::saveRcChannelGroups()
 	}
 	jChannelGroups.printTo(content);
 	PRINT("in RC::saveRcChannelGroups() content: ");PRINTLN(content);
-	_myWebServer->storage()->save("/rcChannelGroups.json", content);
+	_storage->save("/rcChannelGroups.json", content);
+	_storage->saveLZ("/rcChannelGroupsXXX.json", content);
 	return retVal;
 }
 
-bool RemoteControl::loadRcChannelGroups()
+bool RfBridge::loadRcChannelGroups()
 {
 
 	bool retVal = false;
 	String values = "";
 	DynamicJsonBuffer jsonBuffer;
 
-	values = _myWebServer->storage()->open("/rcChannelGroups.json");
+	//values = _myWebServer->storage()->openLZ("/rcChannelGroups.json");
+	values = _storage->open("/rcChannelGroups.json");
+	if (values == ""){//file not found in flash
+		PRINTLN("in RC::loadRcChannelGroups() using embedded!!!!! ");
+		uint osize = sizeof(RC_CHANNEL_GRP) * 1.01;
+		PRINT("embedded file size: ");PRINTLN(osize);
+		unsigned char *myout = new unsigned char [osize];
+		unsigned char myout2[sizeof(RC_CHANNEL_GRP)];
+		LZ_Uncompress( myout, myout2,2 );
+
+	}
 	PRINT("in RC::loadRcChannelGroups() values: ");PRINTLN(values);
 	JsonObject& rcChannelGroupsJson = jsonBuffer.parseObject(values);  //parse weburl
 
@@ -194,14 +160,14 @@ bool RemoteControl::loadRcChannelGroups()
 	return retVal;
 }
 
-bool RemoteControl::loadRcChannels()
+bool RfBridge::loadRcChannels()
 {
 
 	bool retVal = false;
 	String values = "";
 	DynamicJsonBuffer jsonBuffer;
 
-	values = _myWebServer->storage()->open("/rcChannels.json");
+	values = _storage->open("/rcChannels.json");
 	PRINT("in RC::loadRcChannels() values: ");PRINTLN(values);
 	JsonObject& rcChannelsJson = jsonBuffer.parseObject(values);  //parse weburl
 

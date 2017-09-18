@@ -1,38 +1,38 @@
 /*
- * Esp8266.cpp
+ * WebUI_Esp8266.cpp
  *
  *  Created on: 15.05.2017
  *      Author: maro
  */
 
-#include "Esp8266.h"
+#include "WebUI_Esp8266.h"
 
-Esp8266::Esp8266(MaroWebServer *server) {
-	_myWebServer = server;
+WebUI_Esp8266::WebUI_Esp8266(HttpServer *server) {
+	_httpServer = server;
 
 }
 
-Esp8266::~Esp8266() {
+WebUI_Esp8266::~WebUI_Esp8266() {
 	// TODO Auto-generated destructor stub
 }
 
-void Esp8266::begin(){
-	_myWebServer->http()->on("/restartesp", std::bind(&Esp8266::restart, this));
-	_myWebServer->http()->on("/flashupdate", HTTP_POST, [this]() {_myWebServer->http()->send(200, "text/html", (Update.hasError()) ? "FAIL" : "<a href=\"/\">OK Restarting....wait a few seconds, then click here!</a>"); ESP.restart();}, std::bind(&Esp8266::flashFirmware, this));
-	_myWebServer->http()->on("/espstatus", std::bind(&Esp8266::reportEspStatus, this));
+void WebUI_Esp8266::begin(){
+	_httpServer->http()->on("/restartesp", std::bind(&WebUI_Esp8266::restart, this));
+	_httpServer->http()->on("/flashupdate", HTTP_POST, [this]() {_httpServer->http()->send(200, "text/html", (Update.hasError()) ? "FAIL" : "<a href=\"/\">OK Restarting....wait a few seconds, then click here!</a>"); ESP.restart();}, std::bind(&WebUI_Esp8266::flashFirmware, this));
+	_httpServer->http()->on("/espstatus", std::bind(&WebUI_Esp8266::reportEspStatus, this));
 }
 
-void Esp8266::handle(){
+void WebUI_Esp8266::handle(){
 	//TODO: should here be some events implemented? e.g.: pin state change or other measurements
 }
 
-void Esp8266::flashFirmware(){
+void WebUI_Esp8266::flashFirmware(){
 
-	if (_myWebServer->user()->isAdmin() == false) return;
+	if (_httpServer->user()->isAdmin() == false) return;
 	// handler for the file upload, get's the sketch bytes, and writes
 	// them through the Update object
-	_myWebServer->network()->stopDNS();
-	HTTPUpload& upload = _myWebServer->http()->upload();
+	_httpServer->network()->stopDNS();
+	HTTPUpload& upload = _httpServer->http()->upload();
 	if (upload.status == UPLOAD_FILE_START) {
 		//TODO: check if this is needed: WiFiUDP::stopAll();
 		//TODO: make this semaphpre MyWebServer.OTAisflashing = true;
@@ -67,17 +67,17 @@ void Esp8266::flashFirmware(){
 
 };
 
-void Esp8266::restart() {
+void WebUI_Esp8266::restart() {
 
-	if (_myWebServer->user()->isAdmin() == false) return;
-	_myWebServer->http()->send(200, "text/html", "<a href=\"/\">Restarting Device....wait a few seconds, then click here!</a>");
+	if (_httpServer->user()->isAdmin() == false) return;
+	_httpServer->http()->send(200, "text/html", "<a href=\"/\">Restarting Device....wait a few seconds, then click here!</a>");
 	delay(100);
 	ESP.restart();
 
 }
 
 
-void Esp8266::reportEspStatus(){
+void WebUI_Esp8266::reportEspStatus(){
 
 	PRINTLN("reportEspStatus called ");
 	String json = "{";
@@ -85,6 +85,6 @@ void Esp8266::reportEspStatus(){
 	json += ", \"analog\":"+String(analogRead(A0));
 	json += ", \"gpio\":"+String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
 	json += "}";
-	_myWebServer->http()->send(200, "text/json", json);
+	_httpServer->http()->send(200, "text/json", json);
 	json = String();
 }

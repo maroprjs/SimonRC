@@ -1,5 +1,5 @@
 /*
- * MaroWebServer.cpp
+ * HttpServer.cpp
  *
  *  Created on: 01.09.2017
  *      Author: maro
@@ -12,35 +12,35 @@
  * -https://github.com/Links2004/arduinoWebSockets
  */
 
-#include "MaroWebServer.h"
+#include "HttpServer.h"
 
 
-MaroWebServer::MaroWebServer() {
+HttpServer::HttpServer() {
 	_storage = new Storage();
 	_server = new ESP8266WebServer(80);
 	_dnsServer = new DNSServer();
 	_network = new Network(_storage, _dnsServer);//(wifi of course) TODO: server&fs as input for wifi settings through web interface
 	_user = new User(_server, _storage);
-	_gui = new WebGui(_server, _storage, _user, _network, _dnsServer);
+	//_gui = new WebGui(_server, _storage, _user, _network, _dnsServer);
 
 
 }
 
-void MaroWebServer::begin(){
+void HttpServer::begin(){
 	  _storage->begin();
 	  _server->begin();
 	  _network->begin();
-	  _gui->begin();
+	  //_gui->begin();
 }
 
-void MaroWebServer::handle(){
+void HttpServer::handle(){
 	  _server->handleClient();
 	  _network->handle();
 }
 
 
 
-MaroWebServer::~MaroWebServer() {
+HttpServer::~HttpServer() {
 	// TODO Auto-generated destructor stub
 }
 

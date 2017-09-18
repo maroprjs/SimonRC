@@ -10,29 +10,38 @@
  *
  */
 
-#include "MaroWebServer.h"
-#include "Esp8266.h"
-#include "RemoteControl.h"
+#include "HttpServer.h"
+#include "WebUI_HttpServer.h"
+#include "WebUI_Esp8266.h"
+#include "RfBridge.h"
+#include "WebUI_RfBridge.h"
 
-MaroWebServer myWebServer;
-Esp8266 myEsp(&myWebServer);//reference to webserver to serve as a GUI
-RemoteControl rc(&myWebServer);//reference to webserver to serve as a GUI
+
+HttpServer httpServer;
+WebUI_HttpServer webUIHttpServer(&httpServer);
+WebUI_Esp8266 webUIEsp(&httpServer);//reference to webserver to serve as a GUI
+RfBridge rfBridge(httpServer.storage());//webserver's storage used (SPIFFS)
+WebUI_RfBridge webUIRfBridge(&httpServer,&rfBridge);
 
 void setup(void){
   PRINT_INIT(115200);
   PRINT("\n");
   DBGOUTPUT(true);
   delay(5000);
-  myWebServer.begin();
-  myEsp.begin();
-  rc.begin();
+  httpServer.begin();
+  webUIHttpServer.begin();
+  webUIEsp.begin();
+  rfBridge.begin();
+  webUIRfBridge.begin();
 
 }
 
 
 void loop(void){
-	myWebServer.handle();
-	myEsp.handle(); //in case status changes of shall be reported/measured
-	rc.handle();//for receiving data packets
+	httpServer.handle();
+	webUIHttpServer.handle();
+	webUIEsp.handle(); //in case status changes of shall be reported/measured
+	rfBridge.handle();//for receiving data packets
+	webUIRfBridge.handle();
 }
 

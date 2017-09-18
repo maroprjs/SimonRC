@@ -18,7 +18,9 @@ public:
 	virtual ~Storage();
 	void begin();
 	String open(String name);
+	String openLZ(String name);
 	bool save(String fname, String content);
+	bool saveLZ(String fname, String content);
 };
 
 #endif /* STORAGE_H_ */

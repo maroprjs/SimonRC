@@ -1,22 +1,22 @@
 /*
- * WebGui.h
+ * WebUI_HttpServer.h
  *
  *  Created on: 09.05.2017
  *      Author: maro
  */
 
-#ifndef WEBGUI_H_
-#define WEBGUI_H_
-#include <vector>//MRO: use this before #include <ESP8266WebServer.h>, otherwise comple error
+#ifndef WEBUI_HTTPSERVER_H_
+#define WEBUI_HTTPSERVER_H_
+//#include <vector>//MRO: use this before #include <ESP8266WebServer.h>, otherwise comple error
 //(->https://github.com/esp8266/Arduino/issues/2549)
-#include <ESP8266WebServer.h>
-#include <DNSServer.h>
-#include "Storage.h"
-#include "Network.h"
-#include "User.h"
+//#include <ESP8266WebServer.h>
+//#include <DNSServer.h>
+//#include "Storage.h"
+//#include "Network.h"
+//#include "User.h"
+#include "HttpServer.h"
 
-
-class WebGui {
+class WebUI_HttpServer {
 public:
 
 	//typedef std::function<void()> customFunction_t;	//reference: http://stackoverflow.com/questions/3257896/c-for-each-calling-a-vector-of-callback-functions-and-passing-each-one-an-argu
@@ -31,10 +31,11 @@ public:
 	//typedef std::vector <customFunctionRecord_t> customFunctionRecordVector_t;
 
 
-	//WebGui();
-	WebGui(ESP8266WebServer *, Storage *, User *, Network *, DNSServer*);
-	virtual ~WebGui();
+	//WebUI_HttpServer();
+	WebUI_HttpServer(HttpServer *);
+	virtual ~WebUI_HttpServer();
 	void begin();
+	void handle();
 
 
 	//reference: http://stackoverflow.com/questions/3257896/c-for-each-calling-a-vector-of-callback-functions-and-passing-each-one-an-argu
@@ -47,12 +48,12 @@ public:
     //customFunctionRecordVector_t _customFunctionRecordVector;
     //customFunctionRecord_t _customFunctionRecord;
 protected:
-	ESP8266WebServer *_server;
-	Storage * _storage;
-	User * _user;
-	Network * _network;
+	HttpServer *_server;
+	//Storage * _storage;
+	//User * _user;
+	//Network * _network;
 	File _fsUploadFile;
-	DNSServer * _dnsServer;
+	//DNSServer * _dnsServer;
 	//void (*customFunction_)() = NULL;
 	//callback_vector m_cb;
 
@@ -79,4 +80,4 @@ private:
 
 };
 
-#endif /* WEBGUI_H_ */
+#endif /* WEBUI_HTTPSERVER_H_ */

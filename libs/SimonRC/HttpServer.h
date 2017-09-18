@@ -1,5 +1,5 @@
 /*
- * MaroWebServer.h
+ * HttpServer.h
  *
  *  Created on: 01.09.2017
  *      Author: maro
@@ -14,8 +14,8 @@
 
 
 
-#ifndef MAROWEBSERVER_H_
-#define MAROWEBSERVER_H_
+#ifndef HTTPSERVER_H_
+#define HTTPSERVER_H_
 
 #include <Arduino.h>
 #include "Debug.h"
@@ -24,20 +24,21 @@
 #include <DNSServer.h>
 #include "Storage.h"
 #include "User.h"
-#include "WebGui.h"
+//#include "WebGui.h"
 #include "Network.h"
 
 
-class MaroWebServer {
+class HttpServer {
 public:
-	MaroWebServer();
-	virtual ~MaroWebServer();
+	HttpServer();
+	virtual ~HttpServer();
 	void begin();
 	void handle();
 	ESP8266WebServer * http(){return _server;};
 	Network * network(){return _network;};
 	User * user(){return _user;};
 	Storage * storage(){return _storage;};
+	DNSServer * dnsServer(){return _dnsServer;};
 
 
 private:
@@ -46,8 +47,8 @@ private:
 	Storage * _storage;
 	DNSServer * _dnsServer;
 	User * _user;
-	WebGui * _gui;
+	//WebGui * _gui;
 
 };
 
-#endif /* MAROWEBSERVER_H_ */
+#endif /* HTTPSERVER_H_ */
