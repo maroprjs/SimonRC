@@ -27,13 +27,15 @@ class Transceiver {
 		//void addChannel(Channel* chPtr);
 		void registerChannelGroups(ChannelGroup::channelGroupVector_t );
 		void transmit();
+	public:
+		JL * simon;
 	private:
 		void beginCC1101();
 
 	private:
 		CC1101 * _cc1101;
 		ChannelGroup::channelGroupVector_t _channelGroupVector;
-		JL * _jl;
+
 
 };
 

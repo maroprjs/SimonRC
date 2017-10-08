@@ -9,7 +9,7 @@
 #include "Debug.h"
 Transceiver::Transceiver() {
 	_cc1101 = new CC1101();
-	_jl = new JL();
+	simon = new JL();
 
 }
 
@@ -49,8 +49,8 @@ void Transceiver::transmit(){
 		if (chGrpPtr->active()){
 			PRINT("in Transceiver::transmit() found active Group: ");PRINTLN(chGrpPtr->alias());
 			//TODO:chose sender type according protocol in group
-			_jl->encode(chGrpPtr);
-			_jl->send(_cc1101);
+			simon->encode(chGrpPtr);
+			simon->send(_cc1101);
 			chGrpPtr->deactivate();//for next sending
 		}
 		chGroupIterator++;

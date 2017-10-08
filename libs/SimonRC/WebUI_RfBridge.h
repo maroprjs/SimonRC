@@ -17,7 +17,13 @@ public:
 	void begin();
 	void handle();
 private:
-	void handleWebGuiHttp();
+	void _handleWebGuiHttp();
+	void _rcButtonPressed();
+	String _rcListChannelGroups(String scope);
+	String _rcListChannels(ChannelGroup::groupIdx_t grpIdx, String scope);
+	void _rcCreateChannelGroup();
+	void _rcModifyChannelGroup(ChannelGroup::groupIdx_t grpIdx);
+	void _rcAddChannel( ChannelGroup::groupIdx_t grpIdx );
 private:
 	HttpServer * _httpServer;
 	RfBridge * _rfBridge;

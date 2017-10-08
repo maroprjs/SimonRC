@@ -20,7 +20,8 @@ class ChannelGroup {
 	enum protocol_t:uint8_t {
 		SIMON,
 		SOMFY,
-		KOPP
+		KOPP,
+		UNDEFINED = UNDEFINED_HEX_BYTE
 	};
 	struct channelGroup{
 		String alias;
@@ -47,14 +48,18 @@ public:
     void btn(String b) {_channelGroup.btn = b;}
     String btn() {return _channelGroup.btn;}
     protocol_t protocol() const {return _channelGroup.protocol;}
+    void protocol(protocol_t p) {_channelGroup.protocol = p;}
     bool deserialize(channelGroup_t& chGrp, String json);
     void serialize(JsonObject& root);
     void activateChannelGroup();
     void deactivate();
     bool active() {return _channelGroupActive;};
     String address() {return _channelGroup.address;};
+    void address(String a) {_channelGroup.address =  a;};
     String alias() {return _channelGroup.alias;};
+    void alias(String alias) {_channelGroup.alias = alias;};
     groupIdx_t idx() {return _channelGroup.groupIdx;};
+    void idx(groupIdx_t idx) {_channelGroup.groupIdx = idx;};
 
 public:
 	Channel::channelVector_t channelVector;
