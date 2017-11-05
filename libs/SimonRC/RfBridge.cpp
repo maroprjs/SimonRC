@@ -55,8 +55,9 @@ void RfBridge::activateChannel(ChannelGroup::groupIdx_t grpIdx,Channel::channelI
 	//PRINTLN(chPtr->idx());
 }
 
-void RfBridge::commit(){
-  _transceiver->transmit();//TODO: transmit only when channel collection/activation successful
+void RfBridge::activateTransmission(){
+  //_transceiver->transmit();//TODO: transmit only when channel collection/activation successful
+	_transceiver->state = Transceiver::TRANSMITTING;
   saveRcChannelGroups();
 }
 

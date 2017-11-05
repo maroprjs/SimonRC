@@ -11,12 +11,19 @@
 #include "ChannelGroup.h"
 #include "cc1101.h"
 #include "JL.h"
+
 class Transceiver {
 	public:
     	enum transceiver_t:uint8_t {
     		C1101,
 			RFM69CW,
 			RFM12B
+    	};
+
+    	enum transceiverState_t:uint8_t {
+    		IDLE,
+    		TRANSMITTING,
+			RECEIVING
     	};
 
 	public:
@@ -29,6 +36,7 @@ class Transceiver {
 		void transmit();
 	public:
 		JL * simon;
+		transceiverState_t state;
 	private:
 		void beginCC1101();
 

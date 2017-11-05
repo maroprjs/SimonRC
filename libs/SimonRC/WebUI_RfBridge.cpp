@@ -199,8 +199,8 @@ void WebUI_RfBridge::_rcButtonPressed(){
 	}
 
 	//initiate transmission (includes code and packet assembly)
-	PRINTLN("calling transmit now");
-	_rfBridge->commit();
+	PRINTLN("activating transmission now");
+	_rfBridge->activateTransmission();
 
 }
 

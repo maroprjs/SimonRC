@@ -17,6 +17,7 @@ JL::JL() {
 	_cc1101 = NULL;
 	_rx_time = 0;
 	_chGrp = NULL;
+	_lineCode = NULL;
 
 }
 
@@ -399,7 +400,7 @@ void JL::entertx() {
 
 }
 
-void JL::send(CC1101* cc1101){
+void JL::stream(CC1101* cc1101){
 	_cc1101 = cc1101;
 	if (buttonUp()) return;
 	if (buttonStop()) return;
@@ -415,7 +416,7 @@ bool JL::buttonUp(){
 	if (_btnPressed.btn != BUTTON_UP) return false;
 	PRINTLN("JL::buttonUp() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -425,7 +426,7 @@ bool JL::buttonStop(){
 	if (_btnPressed.btn != BUTTON_STOP) return false;
 	PRINTLN("JL::buttonStop() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -435,7 +436,7 @@ bool JL::buttonDown(){
 	if (_btnPressed.btn != BUTTON_DOWN) return false;
 	PRINTLN("JL::buttonDown() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -445,7 +446,7 @@ bool JL::buttonUpDown(){
 	if (_btnPressed.btn != BUTTON_UP_DOWN) return false;
 	PRINTLN("JL::buttonUpDown() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -455,13 +456,13 @@ bool JL::buttonLearn(){//up & down, followed by 1xstop
 	if (_btnPressed.btn != BUTTON_LEARN) return false;
 	PRINTLN("JL::buttonLearn() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     delay(1000);
     updateDiscriminator(BUTTON_STOP);
 	generateHopCode(&_discriminator);
     _cc1101->setTxState();  //
-    senden(_btnPressed.btnCode());             //
+    send(_btnPressed.btnCode());             //
     _cc1101->setIdleState();
 	return retVal;
 }
@@ -473,19 +474,19 @@ bool JL::buttonErase(){//up & down, followed by 6xstop and 1xup
 	if (_btnPressed.btn != BUTTON_ERASE) return false;
 	PRINTLN("JL::buttonErase() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     _cc1101->setTxState();  //
     for (int i = 0; i<6;i++){//six times stop
     	delay(800);
     	updateDiscriminator(BUTTON_STOP);
     	generateHopCode(&_discriminator);
-    	senden(_btnPressed.btnCode());
+    	send(_btnPressed.btnCode());
     }
     delay(1000);
     updateDiscriminator(BUTTON_UP);         //one time up
     generateHopCode(&_discriminator);
-    senden(_btnPressed.btnCode());
+    send(_btnPressed.btnCode());
     _cc1101->setIdleState();//
 
 
@@ -497,14 +498,14 @@ bool JL::buttonCopy(){//up & down, followed by 6xstop and 1xup
 	if (_btnPressed.btn != BUTTON_COPY) return false;
 	PRINTLN("JL::buttonCopy() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     _cc1101->setTxState();  //
     for (int i = 0; i<8;i++){//eight times stop
     	delay(800);
     	updateDiscriminator(BUTTON_STOP);
     	generateHopCode(&_discriminator);
-    	senden(_btnPressed.btnCode());
+    	send(_btnPressed.btnCode());
     }
     _cc1101->setIdleState();//
 
@@ -521,80 +522,71 @@ void JL::updateDiscriminator(String button){
 
 //Simple TX routine.
 //Send code two times. In case of one shutter did not "hear" the command.
-void JL::senden(uint8_t btnCode) {
-  //entertx();
+void JL::send(uint8_t btnCode, uint8_t repeat) {
 	uint64_t data = btnCode;
-	uint64_t pack = 0;
-	pack = data << 60;
+	uint64_t payload = 0;
+	payload = data << 60;
 	data = _discriminator.serialN;
 	data = data << 32;
-	pack = pack | data;
+	payload = payload | data;
 	data = _hopCode;
-	pack = pack | data;
-	myprint(pack);
-  for (int i = 0; i < 2; i++)
-  {
-    digitalWrite(4, LOW);//CC1101 in TX Mode+
-    delayMicroseconds(1150);
-    frame(10);
-    delayMicroseconds(3500);//Waittime
-    for (int i = 0; i < 64; i++) {
-      int out = ((pack >> i) & 0x1);//Bitmask to get MSB and send it first
-      if (out == 0x1)
-      {
-        digitalWrite(4, LOW);//Simple encoding of Bit state 1
-        delayMicroseconds(Lowpulse);
-        digitalWrite(4, HIGH);
-        delayMicroseconds(Highpulse);
-      }
-      else
-      {
-        digitalWrite(4, LOW);//Simple encoding of Bit state 0
-        delayMicroseconds(Highpulse);
-        digitalWrite(4, HIGH);
-        delayMicroseconds(Lowpulse);
-      }
-    }
-    group_h(); //Last 8Bit. For motor 8-16.
-    delayMicroseconds(2500);
-
-  }
-
+	payload = payload | data;
+	//myprint(payload);
+	PRINT64(payload);
+	while (repeat > 0)
+	{
+		transmitWakeUp();
+		transmitPayload(payload);
+    	repeat--;
+	}
 }
 
 
-//Sending of high_group_bits 8-16
-void JL::group_h() {
-  for (int i = 0; i < 8; i++) {
-
-    int out = ((_discriminator.part2() >> i) & 0x1);//Bitmask to get MSB and send it first
-    if (out == 0x1)
-    {
-      digitalWrite(4, LOW);//Simple encoding of Bit state 1
-      delayMicroseconds(Lowpulse);
-      digitalWrite(4, HIGH);
-      delayMicroseconds(Highpulse);
-    }
-    else
-    {
-      digitalWrite(4, LOW);//Simple encoding of Bit state 0
-      delayMicroseconds(Highpulse);
-      digitalWrite(4, HIGH);
-      delayMicroseconds(Lowpulse);
-    }
-  }
+void JL::transmitWakeUp(int repeat) {
+  digitalWrite(TX_PIN, LOW);//CC1101 in TX Mode+
+  delayMicros(1150);
+  for (int i = 0; i < repeat; ++i) {
+	  send0();
+  };
+  delayMicros(3500);//pause
 }
 
-//Generates sync-pulses
-
-void JL::frame(int l) {
-  for (int i = 0; i < l; ++i) {
-    digitalWrite(4, LOW);
-    delayMicroseconds(Highpulse);
-    digitalWrite(4, HIGH);
-    delayMicroseconds(Lowpulse);
-  }
+void JL::transmitPayload(uint64_t payload){
+	for (int i = 0; i < 64; i++) {
+		int out = ((payload >> i) & 0x1);//shift mask
+		if ( out == 0x1 ){
+			send1();
+		}
+		else {
+			send0();
+		};
+	};
+	for (int i = 0; i < 8; i++) {//for group addressing receiver/channel 8-16.
+	    int out = ((_discriminator.part2() >> i) & 0x1);
+	    if (out == 0x1){
+	    	send1();
+	    }
+	    else {
+	    	send0();
+	    };
+	};
+	delayMicros(2500);
 }
+
+void JL::send0(){//PWM
+    digitalWrite(TX_PIN, LOW);
+    delayMicros(LONG_PULSE);
+    digitalWrite(TX_PIN, HIGH);
+    delayMicros(SHORT_PULSE);
+}
+
+void JL::send1(){//PWM
+	digitalWrite(TX_PIN, LOW);
+	delayMicros(SHORT_PULSE);
+	digitalWrite(TX_PIN, HIGH);
+	delayMicros(LONG_PULSE);
+}
+
 
 void JL::delayMicros(uint32_t d) {
 #ifdef SYS_DELAY
@@ -605,19 +597,4 @@ void JL::delayMicros(uint32_t d) {
 #endif
 }
 
-//https://forum.arduino.cc/index.php?topic=378359.0
-//#include <math.h>
-void JL::myprint(uint64_t value)
-{
-    const int NUM_DIGITS    = log10(value) + 1;
 
-    char sz[NUM_DIGITS + 1];
-
-    sz[NUM_DIGITS] =  0;
-    for ( size_t i = NUM_DIGITS; i--; value /= 10)
-    {
-        sz[i] = '0' + (value % 10);
-    }
-
-    Serial.print(sz);
-}

@@ -9,135 +9,90 @@
 <meta name="settings" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" >
 <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 <meta content="utf-8" http-equiv="encoding"-->
-<title>Rolladensteuerung</title>
-<script src="rcConfig.js" ></script>
+<title>Shutter Control</title>
 <script type="text/javascript" >
 var numOfChannels=0;
-var rcGroup = "";
+//var rcGroup = "";
+
+function readTextFile(file, callback) { //https://stackoverflow.com/questions/19706046/how-to-read-an-external-local-json-file-in-javascript
+    var rawFile = new XMLHttpRequest();
+    rawFile.overrideMimeType("application/json");
+    rawFile.open("GET", file, true);
+    rawFile.onreadystatechange = function() {
+        if (rawFile.readyState === 4 && rawFile.status == "200") {
+            callback(rawFile.responseText);
+        }
+    }
+    rawFile.send(null);
+}
+
 function mr_loadConfig ()
 {
-	rcGroup = rcConfig;
-	getNumberOfChannels();//to global variable
+	//rcGroup = rcConfig;
 	var elmt;
 	var txt;
 	var att;
 	
+	readTextFile("rcChannels.json", function(text){
+		var data = JSON.parse(text);
+		for(var i = 1; i <= 16; i++){//max 16 channels per group
+			if(data.hasOwnProperty('channel' + i.toString()) == true){
+				numOfChannels++;
+			}
+			else
+			{
+				break;
+			};
+		};
+		//console.log(data);
+	//});
+	console.log(numOfChannels);
+
+	
+	elmt = document.createElement("br"); 
+	document.body.appendChild(elmt);
+	
 	for(var i = 1; i <= numOfChannels; i++)
 	{
+	
 		elmt = document.createElement("text");
-		//txt = document.createTextNode("channel: " + i.toString());
-		//console.log(rcGroup["channel" + i.toString()].name);
-		txt = document.createTextNode(rcGroup["channel" + i.toString()].name);
+		txt = document.createTextNode(data['channel' + i.toString()].alias);
 		elmt.appendChild(txt);
 		document.body.appendChild(elmt);
 	
 		elmt = document.createElement("br"); 
 		document.body.appendChild(elmt);
 		
-		//----------UP---------------------------
-		elmt = document.createElement("button");        // button
-		//txt = document.createTextNode("\u2191up\u2191");       
-		//txt = document.createTextNode("\u21A5up\u21A5");       
-		//txt = document.createTextNode("\u21E7 up");       
-		txt = document.createTextNode("\u27F0 up");       
-		//txt = document.createTextNode("\u2227 up");       
+		//-------->--learn--->------------------------
+		elmt = document.createElement("button");        // button      
+		txt = document.createTextNode("learn");        
 		elmt.appendChild(txt);                                
 
 		att = document.createAttribute("class");       // style
-		att.value = "btn";    
+		att.value = "btn1_3_r";    
 		elmt.setAttributeNode(att);
 
 		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + i.toString() + "," + "\"up\"" + ")";    
+		att.value = "my_click(" + i.toString() + "," + "\"learn\"" + ")";    
 		elmt.setAttributeNode(att);
 
 		document.body.appendChild(elmt); 
-		//----------UP---------------------------
-		//----------STOP---------------------------
-		elmt = document.createElement("button");        // button
-		//txt = document.createTextNode("\u293A stop \u293B");       
-		txt = document.createTextNode("\u2618 stop");       
+		//--------<--learn--<-------------------------
+		//-------->--erase--->------------------------
+		elmt = document.createElement("button");        // button      
+		txt = document.createTextNode("erase");        
 		elmt.appendChild(txt);                                
 
 		att = document.createAttribute("class");       // style
-		att.value = "btn1_2";    
+		att.value = "btn1_3_r";    
 		elmt.setAttributeNode(att);
 
 		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + i.toString() + "," + "\"stop\"" + ")";      
+		att.value = "my_click(" + i.toString() + "," + "\"erase\"" + ")";    
 		elmt.setAttributeNode(att);
 
 		document.body.appendChild(elmt); 
-		//----------STOP---------------------------
-		//----------DN---------------------------
-		elmt = document.createElement("button");        // button
-		//txt = document.createTextNode("\u2193dn\u2193");       
-		//txt = document.createTextNode("\u21A7dn\u21A7");       
-		//txt = document.createTextNode("\u21E9 dn");       
-		txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn";    
-		elmt.setAttributeNode(att);
-
-		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + i.toString() + "," + "\"down\"" + ")";     
-		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//----------DN---------------------------
-		elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
-				elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
-				elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
-				elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
-		//----------LEARN------------------------
-		elmt = document.createElement("button");        // button
-		//txt = document.createTextNode("\u2193dn\u2193");       
-		//txt = document.createTextNode("\u21A7dn\u21A7");       
-		txt = document.createTextNode("L");       
-		//txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn1_3";    
-		elmt.setAttributeNode(att);
-
-		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + i.toString() + "," + "\"learn\"" + ")";     
-		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//----------LEARN------------------------
-		//----------ERASE------------------------
-		elmt = document.createElement("button");        // button
-		//txt = document.createTextNode("\u2193dn\u2193");       
-		txt = document.createTextNode("E");       
-		//txt = document.createTextNode("\u21E9 dn");       
-		//txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn1_3";    
-		elmt.setAttributeNode(att);
-
-		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + i.toString() + "," + "\"erase\"" + ")";     
-		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//----------ERASE-----------------------
-	
-		elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
-	
+		//-------<---erase--<-------------------------
 		elmt = document.createElement("br"); 
 		document.body.appendChild(elmt);
 		
@@ -145,73 +100,23 @@ function mr_loadConfig ()
 		document.body.appendChild(elmt);
 	}
 
-		elmt = document.createElement("br"); 
+	if ( numOfChannels > 0 ){//todo: is that necessary?
+		//---------back->-------------------
+		elmt = document.createElement("hr"); 
 		document.body.appendChild(elmt);
-		//----------GROUP UP------------------------
-		elmt = document.createElement("button");        // button
-		txt = document.createTextNode("GU");       
-		//txt = document.createTextNode("\u21A7dn\u21A7");       
-		//txt = document.createTextNode("\u21E9 dn");       
-		//txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn1_3";    
-		elmt.setAttributeNode(att);
-
+		elmt = document.createElement("a");        // button
+		elmt.setAttribute('class', 'button');
+		txt = document.createTextNode("back");            
+		elmt.appendChild(txt); 
 		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + "20" + "," + "\"up\"" + ")";     
+		att.value = "history.go(-1);";    
 		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//---------GROUP UP-------------------------
-		//----------GROUP STOP------------------------
-		elmt = document.createElement("button");        // button
-		txt = document.createTextNode("GS");       
-		//txt = document.createTextNode("\u21A7dn\u21A7");       
-		//txt = document.createTextNode("\u21E9 dn");       
-		//txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn1_3";    
-		elmt.setAttributeNode(att);
-
-		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + "20" + "," + "\"stop\"" + ")";     
-		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//---------GROUP STOP-------------------------
-		//----------GROUP DOWN------------------------
-		elmt = document.createElement("button");        // button
-		txt = document.createTextNode("GD");       
-		//txt = document.createTextNode("\u21A7dn\u21A7");       
-		//txt = document.createTextNode("\u21E9 dn");       
-		//txt = document.createTextNode("\u27F1 dn");       
-		//txt = document.createTextNode("\u2228 dn");       
-		elmt.appendChild(txt);                                
-
-		att = document.createAttribute("class");       // style
-		att.value = "btn1_3";    
-		elmt.setAttributeNode(att);
-
-		att = document.createAttribute("onclick");       // onclick
-		att.value = "my_click(" + "20" + "," + "\"down\"" + ")";     
-		elmt.setAttributeNode(att);
-
-		document.body.appendChild(elmt); 
-		//---------GROUP DOWN-------------------------
-		elmt = document.createElement("br"); 
 		document.body.appendChild(elmt);
-	
-	
-		elmt = document.createElement("br"); 
-		document.body.appendChild(elmt);
+		//--------<-back--------------------	
+	};
 	initializeAJAX();
 	//getSensorReadings();
+	});
 }
 
 function initializeAJAX()
@@ -231,28 +136,11 @@ function initializeAJAX()
 }
 
 
-function getNumberOfChannels()
-{
-	
-	var maxFound = false;
-	var count = 0;
-	while (maxFound == false)
-	{
-		count++;
-		if  (("channel" + count.toString() in rcGroup)==true){
-			numOfChannels++;
-		}
-		else
-		{
-			maxFound = true;
-		}
-	}
-
-}
-
 function my_click(channel, cmd)
 {
 	var channelIdx = channel - 1;
+	var chIdxStrg = "";
+	var is_valid = true;
 	console.log("channel: " + channel);
 	console.log("channelidx: " + channelIdx);
 	if (!myAjax) 
@@ -263,19 +151,41 @@ function my_click(channel, cmd)
 	else 
 	{
 		myAjax.onreadystatechange=responseCheck;
-		if (channel == "20")
+		if (channel == "20") //group
 		{
-			var Url = "rc?scope=rc_btn&groupIdx=0&chIdx1=0&chIdx2=1&chIdx3=7&btn=" + cmd + "&timestamp=" + new Date().getTime();
-			console.log("url: " + Url);
+			var chIdxID = 0;
+			for(var i = 1; i <= numOfChannels; i++)
+			{
+				if ( document.getElementById('radio_channel' + i.toString()).checked == true ) {
+					console.log("channel " + i.toString() + "checked");
+					chIdxID++;
+					var chIdx = i - 1;
+					chIdxStrg = chIdxStrg + "&chIdx" + chIdxID.toString() + "=" + chIdx.toString();
+				}else{
+					console.log("channel " + i.toString() + "not checked");
+				};
+			};
+			
+			if ( chIdxID === 0 ){
+				is_valid = false;
+			};
+			//var Url = "rc?scope=rc_btn&groupIdx=0&chIdx1=0&chIdx2=1&chIdx3=7&btn=" + cmd + "&timestamp=" + new Date().getTime();
+			//var testUrl = "rc?scope=rc_list_channels" + "&timestamp=" + new Date().getTime();
+			var Url = "rc?scope=rc_btn&groupIdx=0" + chIdxStrg + "&btn=" + cmd + "&timestamp=" + new Date().getTime();
+			//console.log("testurl: " + testUrl);
 		}
-		else
+		else //single channel
 		{
 			var Url = "rc?"+"scope=rc_btn" + "&groupIdx=0" +"&chIdx1=" + channelIdx + "&btn=" + cmd + "&timestamp=" + new Date().getTime();
 			console.log("url: " + Url);
 		}
-		myAjax.open("GET",Url,true);
-		myAjax.send();
-		document.getElementById('status').setAttribute("class","status_btn2");
+		
+		if ( is_valid === true ){
+			console.log("testurl: " + Url);
+			myAjax.open("GET",Url,true);
+			myAjax.send();
+			document.getElementById('status').setAttribute("class","status_btn2");
+		}
 	}
 
 }
@@ -303,6 +213,7 @@ function responseCheck()
 	 if (myAjax.readyState==4 && myAjax.status==200)
 	{
 		var response = JSON.parse(myAjax.responseText);
+		console.log(response);
 		if (response.status == "rc_ok"){
 			document.getElementById('status').setAttribute("class","status_btn1");
 		}else if (response.status == "OK_sensor"){
@@ -365,12 +276,34 @@ function responseCheck()
   background-image: linear-gradient(to bottom, #3498db, #2980b9);
   font-family: Arial;
   color: #ffffff;
-  width  :  50px;
-  height :50px;
+  width  : 400px;
+  height : 50px;
 
   vertical-align: center; 
   text-align: center;
-  width  :  50px;
+  width  :  400px;
+  height :50px;
+  font-size: 16px;
+
+  
+}
+
+.btn_2_grey {
+
+  background: #3498db;
+  background-image: -webkit-linear-gradient(top, #eff1f2, #dee4e8);
+  background-image: -moz-linear-gradient(top, #eff1f2, #dee4e8);
+  background-image: -ms-linear-gradient(top, #eff1f2, #dee4e8);
+  background-image: -o-linear-gradient(top, #eff1f2, #dee4e8);
+  background-image: linear-gradient(to bottom, #eff1f2, #dee4e8);
+  font-family: Arial;
+  color: #ffffff;
+  width  : 400px;
+  height : 50px;
+
+  vertical-align: center; 
+  text-align: center;
+  width  :  400px;
   height :50px;
   font-size: 16px;
 
@@ -449,6 +382,27 @@ function responseCheck()
   
 }
 
+.btn1_3_r {
+
+  font-family: Arial;
+  color: #ffffff;
+
+  vertical-align: center; 
+  text-align: center;
+  width  :  70px;
+  height :40px;
+  font-size: 12px;
+  background: #3cb0fd;
+  background-image: -webkit-linear-gradient(top, #666365, #2b2a2a);
+  background-image: -moz-linear-gradient(top, #666365, #2b2a2a);
+  background-image: -ms-linear-gradient(top, #666365, #2b2a2a);
+  background-image: -o-linear-gradient(top, #666365, #2b2a2a);
+  background-image: linear-gradient(to bottom, #666365, #2b2a2a);
+
+  text-decoration: none;
+  
+}
+
 .status_btn1 {
 
   background: #81db34;
@@ -497,9 +451,20 @@ function responseCheck()
   
 }
 
+ a.button {
+    -webkit-appearance: button;
+    -moz-appearance: button;
+    appearance: button;
+    text-decoration: none;
+    color: initial;
+    padding: 3px 5px;
+    border: 1px solid #000;
+    background: #eee;
+}
+
 </style>
 </head><body onload="javascript:mr_loadConfig();">
-<text id="mr_sensor">Fernbedienung</text>
+<text id="mr_sensor">Remote Control</text>
 <a href="./index.html"><hr></a>
 <div id="status" class="status_btn1"></div>
 </body></html>

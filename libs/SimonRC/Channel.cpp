@@ -55,6 +55,6 @@ void Channel::serialize(JsonObject& root)
 }
 
 void Channel::activateChannel(){
-	PRINT("in Channel::activateChannel() true");
+	PRINTLN("in Channel::activateChannel() = true");
 	_channelActive = true;
 }

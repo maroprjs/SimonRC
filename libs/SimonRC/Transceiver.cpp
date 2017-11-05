@@ -10,12 +10,13 @@
 Transceiver::Transceiver() {
 	_cc1101 = new CC1101();
 	simon = new JL();
+	state = IDLE;
 
 }
 
 void Transceiver::begin(){
 	//TODO: fill when needed
-	pinMode(4, OUTPUT);
+	pinMode(TX_PIN, OUTPUT);
 	//if C1101 attached:TODO: take different hw into account!
 	beginCC1101();//in order not to modify the c1101 library
 
@@ -23,8 +24,15 @@ void Transceiver::begin(){
 }
 
 void Transceiver::handle(){
-	//TODO: fill when needed
-	//_codec->handle();//TODO: is that necessary?
+	switch (state){
+	case IDLE:
+		break;
+	case TRANSMITTING:
+		transmit();
+		break;
+	case RECEIVING:
+		break;
+	}
 }
 
 Transceiver::~Transceiver() {
@@ -40,6 +48,7 @@ void Transceiver::registerChannelGroups(ChannelGroup::channelGroupVector_t chGrp
 }
 
 void Transceiver::transmit(){
+	PRINTLN("in Transceiver::transmit()");
 	//find active channelGroups and channels within those groups to be prepared for transmission:
 	ChannelGroup::channelGroupVector_t::const_iterator chGroupIterator;
 	ChannelGroup* chGrpPtr = NULL;
@@ -50,8 +59,9 @@ void Transceiver::transmit(){
 			PRINT("in Transceiver::transmit() found active Group: ");PRINTLN(chGrpPtr->alias());
 			//TODO:chose sender type according protocol in group
 			simon->encode(chGrpPtr);
-			simon->send(_cc1101);
+			simon->stream(_cc1101);
 			chGrpPtr->deactivate();//for next sending
+			this->state = IDLE;
 		}
 		chGroupIterator++;
 

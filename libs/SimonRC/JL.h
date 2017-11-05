@@ -11,14 +11,18 @@
 #include "ChannelGroup.h"
 #include <cc1101.h>
 #include "Arduino.h"
+#include "LineCode.h"
 
 class JL {
 
-#define Lowpulse         400                //Defines Pulse-Width in us. Adapt for your use...
-#define Highpulse        800
-#define RC_CHANNEL_GRP_TEMPLATE_SIZE_LZ 155
-#define RC_CHANNEL_GRP_TEMPLATE_SIZE 184
-#define MAX_NUM_OF_CHANNELS_IN_GRP 0xF
+#define TX_PIN 4 //GPIO4 = D2 = GDO0 //TODO: move this to transceiver or cc1101.h
+
+#define SHORT_PULSE       400 //in [us]
+#define LONG_PULSE        800
+
+	#define RC_CHANNEL_GRP_TEMPLATE_SIZE_LZ 155
+	#define RC_CHANNEL_GRP_TEMPLATE_SIZE 184
+	#define MAX_NUM_OF_CHANNELS_IN_GRP 0xF
 
 	#define BUTTON_DOWN "down"
 	#define BUTTON_STOP "stop"
@@ -93,9 +97,10 @@ public:
 	void loadChannelGroupTemplate(ChannelGroup* chGrpPtr,ChannelGroup::groupIdx_t);
 	bool loadChannelTemplate(ChannelGroup* chGrpPtr, Channel* chPtr, Channel::channelIdx_t);
 	void encode(ChannelGroup*);
-	void send(CC1101*);
+	void stream(CC1101*);
 public:
 	//discriminator_t discriminator;
+
 private:
 	void generateDeviceKey(ChannelGroup* chGrp,discriminator_t* disc);
 	void generateHopCode(discriminator_t* disc);
@@ -120,22 +125,26 @@ private:
 	void updateDiscriminator(String button);
 	void entertx();
 	void enterrx();
-	void senden(uint8_t);
-	void group_h();
-	void frame(int l);
+	void send(uint8_t, uint8_t repeat = 2);
+	void transmitWakeUp(int l = 10);
+	void transmitPayload(uint64_t payload);
+	void send0();
+	void send1();
 	void delayMicros(uint32_t d);
-	void myprint(uint64_t value);
+
 private:
 	ChannelGroup* _chGrp;
 	discriminator_t _discriminator;
 	key_t _deviceKeyLow;
 	key_t _deviceKeyHigh;
 	key_t _hopCode;
+	btn_t _btnPressed;
 
+	LineCode* _lineCode;
 
 	uint32_t _rx_time;
 	CC1101 * _cc1101;
-	btn_t _btnPressed;
+
 
 };
 

@@ -27,7 +27,7 @@ public:
 	void handle();
 	void activateChannelGroup(ChannelGroup::groupIdx_t grpIdx,String btn_pressed);
 	void activateChannel(ChannelGroup::groupIdx_t grpIdx,Channel::channelIdx_t chIdx);
-	void commit();
+	void activateTransmission();
 	void createChannelGroup(ChannelGroup::protocol_t protocol, String alias = UNDEFINED_STRG, String address = UNDEFINED_STRG, ChannelGroup::counter_t cnt = 0);
 	bool addChannel(ChannelGroup::groupIdx_t grpIdx, String alias = UNDEFINED_STRG, String address = UNDEFINED_STRG);
 	bool deleteChannel(ChannelGroup::groupIdx_t grpIdx);//last created channel will be deleted
