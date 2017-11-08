@@ -7,6 +7,7 @@
 
 #include "JL.h"
 #include "Keeloq.h"
+#include "lz.h"
 #include "Debug.h"
 
 JL::JL() {
@@ -16,11 +17,64 @@ JL::JL() {
 	_cc1101 = NULL;
 	_rx_time = 0;
 	_chGrp = NULL;
+	//_lineCode = NULL;
 
 }
 
 JL::~JL() {
 	// TODO Auto-generated destructor stub
+}
+
+void JL::loadChannelGroupTemplate(ChannelGroup* chGrpPtr,ChannelGroup::groupIdx_t newIdx){
+	//newIdx = 3;//TODO: delete this!!!!
+	DynamicJsonBuffer jsonBuffer;
+	unsigned char *chGrpTemplate = new unsigned char [RC_CHANNEL_GRP_TEMPLATE_SIZE];
+	String outStrg = "";
+
+	PRINTLN("in JL::loadChannelGroupTemplate(..)");
+
+	LZ_Uncompress( (unsigned char*)RC_CHANNEL_GRP_TEMPLATE, chGrpTemplate,RC_CHANNEL_GRP_TEMPLATE_SIZE_LZ);
+
+	for ( int i = 0; i < RC_CHANNEL_GRP_TEMPLATE_SIZE; i++ ) outStrg = outStrg + (char)chGrpTemplate[i];
+
+	delete chGrpTemplate;
+
+	JsonObject& rcChannelGroupJson = jsonBuffer.parseObject(outStrg);
+	if (rcChannelGroupJson.success()){
+		//chGrpPtr->idx(newIdx);
+
+		String addrTmplte = rcChannelGroupJson["channel_group"]["address"].asString();
+		String addr = getSeedAsString(addrTmplte) + String(getGroupSerial(addrTmplte) + newIdx,HEX) + getSerialIdxAsString(addrTmplte);
+		addr.toUpperCase();
+		chGrpPtr->address(addr);
+		PRINTLN(chGrpPtr->address());
+
+		String aliasTmplte = rcChannelGroupJson["channel_group"]["alias"].asString();
+		aliasTmplte = aliasTmplte + " " + String(newIdx);
+		chGrpPtr->alias(aliasTmplte);
+	}
+
+	//PRINTLN(outStrg);
+}
+
+bool JL::loadChannelTemplate(ChannelGroup* chGrpPtr, Channel* chPtr,Channel::channelIdx_t newIdx){
+	bool retVal = false;
+
+	if (newIdx > MAX_NUM_OF_CHANNELS_IN_GRP) return retVal;
+	else retVal = true;
+
+	String addrTmplte = chGrpPtr->address();
+	String addr = getSeedAsString(addrTmplte) + String(getGroupSerial(addrTmplte),HEX) + "0" + String(newIdx,HEX);
+	addr.toUpperCase();
+	chPtr->address(addr);
+	PRINTLN(chPtr->address());
+
+	String aliasTmplte = "simon channel " + String(newIdx + 1);
+	chPtr->alias(aliasTmplte);
+
+	chPtr->groupIdx(chGrpPtr->idx());
+
+	return retVal;
 }
 
 void JL::encode(ChannelGroup* chGrp){
@@ -39,14 +93,14 @@ void JL::encode(ChannelGroup* chGrp){
 	PRINT("part2: ");PRINTLNH(_discriminator.part2());
 	generateDeviceKey(chGrp,&_discriminator); 	//input needed: group adress, serial dpendng on mode
 								//output device key
-	generateHopCode(chGrp,&_discriminator);//input needed: device key, discriminator
+	generateHopCode(&_discriminator);//input needed: device key, discriminator
 	//generateTxStream(chGrp);???
 }
 
 
 
 void JL::generateDeviceKey(ChannelGroup* chGrp, discriminator_t* disc){
-	 Keeloq klq(getKeyHigh(chGrp->address()), getKeyLow(chGrp->address()));
+	 Keeloq klq(getSeedMS(chGrp->address()), getSeedLS(chGrp->address()));
 	 String address = "";
 	 PRINT("in JL::generateDeviceKey(..) serialN: ");PRINTLNH(disc->serialN);
 	 key_t key = disc->serialN | 0x20000000;
@@ -57,7 +111,7 @@ void JL::generateDeviceKey(ChannelGroup* chGrp, discriminator_t* disc){
 }
 
 
-void JL::generateHopCode(ChannelGroup* chGrp,discriminator_t* disc){
+void JL::generateHopCode(discriminator_t* disc){
 	Keeloq klq(_deviceKeyHigh, _deviceKeyLow);
 	//calculateDiscriminator(chGrp, discriminator);
 	PRINT("in JL::generateHopCode calculated discr.: ");PRINTH(disc->part1());PRINT(" ");PRINTLNH(disc->part2());
@@ -213,28 +267,55 @@ void JL::generateDiscriminator(ChannelGroup* chGrp, discriminator_t& disc){
 //btn.strgToBtnCode("stop");
 
 //"FEDCBA9876543210ABCD01" to 0x76543210
-JL::key_t JL::getKeyLow(String iStrg){
-	PRINT("in JL::getKeyLow(..), input: "); PRINTLN(iStrg);
+JL::key_t JL::getSeedLS(String iStrg){
+	PRINT("in JL::getSeedLS(..), input: "); PRINTLN(iStrg);
 	const uint8_t SIZE_OF_LOW_KEY = 8;// in [nibbles]
 	const uint8_t BEGIN_OFFSET_LOW_KEY = 8;// in [nibbles]
 	key_t retVal = 0;
 	String ss = iStrg.substring(BEGIN_OFFSET_LOW_KEY, BEGIN_OFFSET_LOW_KEY + SIZE_OF_LOW_KEY);
-	PRINT("in JL::getKeyLow(..), output String: "); PRINTLN(ss);
+	PRINT("in JL::getSeedLS(..), output String: "); PRINTLN(ss);
 	retVal = hex2int((char*)ss.c_str());
-	PRINT("in JL::getKeyLow(..), output Hex: "); PRINTLNH(retVal);
+	PRINT("in JL::getSeedLS(..), output Hex: "); PRINTLNH(retVal);
 	return retVal;
 }
 
 //"FEDCBA9876543210ABCD01" to 0xFEDCBA98
-JL::key_t JL::getKeyHigh(String iStrg){
-	PRINT("in JL::getKeyHigh(..), input: "); PRINTLN(iStrg);
+JL::key_t JL::getSeedMS(String iStrg){
+	PRINT("in JL::getSeedMS(..), input: "); PRINTLN(iStrg);
 	const uint8_t SIZE_OF_HIGH_KEY = 8;// in [nibbles]
 	const uint8_t BEGIN_OFFSET_HIGH_KEY = 0;// in [nibbles]
 	key_t retVal = 0;
 	String ss = iStrg.substring(BEGIN_OFFSET_HIGH_KEY, BEGIN_OFFSET_HIGH_KEY + SIZE_OF_HIGH_KEY);
-	PRINT("in JL::getKeyHigh(..), output String: "); PRINTLN(ss);
+	PRINT("in JL::getSeedMS(..), output String: "); PRINTLN(ss);
 	retVal = hex2int((char*)ss.c_str());
-	PRINT("in JL::getKeyHigh(..), output Hex: "); PRINTLNH(retVal);
+	PRINT("in JL::getSeedMS(..), output Hex: "); PRINTLNH(retVal);
+	return retVal;
+}
+
+//"FEDCBA9876543210ABCD01" to FEDCBA9876543210
+String JL::getSeedAsString(String iStrg){
+	PRINT("in JL::getSeedAsString(..), input: "); PRINTLN(iStrg);
+	const uint8_t SIZE_OF_SEED = 16;// in [nibbles]
+	const uint8_t BEGIN_OFFSET_SEED = 0;// in [nibbles]
+	String retVal = "";
+	String ss = iStrg.substring(BEGIN_OFFSET_SEED, BEGIN_OFFSET_SEED + SIZE_OF_SEED);
+	PRINT("in JL::getSeedAsString(..), output String: "); PRINTLN(ss);
+	//retVal = hex2int((char*)ss.c_str());
+	retVal = ss;
+	//PRINT("in JL::getSeedAsString(..), output Hex: "); PRINTLNH(retVal);
+	return retVal;
+}
+
+//"FEDCBA9876543210ABCD01" to 0xABCD
+JL::key_t JL::getGroupSerial(String iStrg){
+	PRINT("in JL::getGroupSerial(..), input: "); PRINTLN(iStrg);
+	const uint8_t SIZE_OF_GRP_SERIAL = 4;// in [nibbles]
+	const uint8_t BEGIN_OFFSET_GRP_SERIAL = 16;// in [nibbles]
+	key_t retVal = 0;
+	String ss = iStrg.substring(BEGIN_OFFSET_GRP_SERIAL, BEGIN_OFFSET_GRP_SERIAL + SIZE_OF_GRP_SERIAL);
+	PRINT("in JL::getGroupSerial(..), output String: "); PRINTLN(ss);
+	retVal = hex2int((char*)ss.c_str());
+	PRINT("in JL::getGroupSerial(..), output Hex: "); PRINTLNH(retVal);
 	return retVal;
 }
 
@@ -250,6 +331,8 @@ JL::key_t JL::getSerial(String iStrg){
 	return retVal;
 }
 
+
+
 //"FEDCBA9876543210ABCD01" to 0x01
 JL::key_t JL::getSerialIdx(String iStrg){
 	PRINT("in JL::getSerialIdx(..), input: "); PRINTLN(iStrg);
@@ -259,6 +342,19 @@ JL::key_t JL::getSerialIdx(String iStrg){
 	PRINT("in JL::getSerialIdx(..), output String: "); PRINTLN(iStrg);
 	retVal = hex2int((char*)iStrg.c_str());
 	PRINT("in JL::getSerialIdx(..), output Hex: "); PRINTLNH(retVal);
+	return retVal;
+}
+
+//"FEDCBA9876543210ABCD01" to "01"
+String JL::getSerialIdxAsString(String iStrg){
+	PRINT("in JL::getSerialIdxAsString(..), input: "); PRINTLN(iStrg);
+	const uint8_t BEGIN_OFFSET_SERIAL = 20;// in [nibbles]
+	String retVal = "";
+	iStrg.remove(0, BEGIN_OFFSET_SERIAL);
+	PRINT("in JL::getSerialIdxAsString(..), output String: "); PRINTLN(iStrg);
+	//retVal = hex2int((char*)iStrg.c_str());
+	retVal = iStrg;
+	//PRINT("in JL::getSerialIdx(..), output Hex: "); PRINTLNH(retVal);
 	return retVal;
 }
 
@@ -304,7 +400,7 @@ void JL::entertx() {
 
 }
 
-void JL::send(CC1101* cc1101){
+void JL::stream(CC1101* cc1101){
 	_cc1101 = cc1101;
 	if (buttonUp()) return;
 	if (buttonStop()) return;
@@ -320,7 +416,7 @@ bool JL::buttonUp(){
 	if (_btnPressed.btn != BUTTON_UP) return false;
 	PRINTLN("JL::buttonUp() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -330,7 +426,7 @@ bool JL::buttonStop(){
 	if (_btnPressed.btn != BUTTON_STOP) return false;
 	PRINTLN("JL::buttonStop() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -340,7 +436,7 @@ bool JL::buttonDown(){
 	if (_btnPressed.btn != BUTTON_DOWN) return false;
 	PRINTLN("JL::buttonDown() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -350,7 +446,7 @@ bool JL::buttonUpDown(){
 	if (_btnPressed.btn != BUTTON_UP_DOWN) return false;
 	PRINTLN("JL::buttonUpDown() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
 	return retVal;
 }
@@ -360,13 +456,13 @@ bool JL::buttonLearn(){//up & down, followed by 1xstop
 	if (_btnPressed.btn != BUTTON_LEARN) return false;
 	PRINTLN("JL::buttonLearn() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     delay(1000);
     updateDiscriminator(BUTTON_STOP);
-	generateHopCode(_chGrp,&_discriminator);
+	generateHopCode(&_discriminator);
     _cc1101->setTxState();  //
-    senden(_btnPressed.btnCode());             //
+    send(_btnPressed.btnCode());             //
     _cc1101->setIdleState();
 	return retVal;
 }
@@ -378,19 +474,19 @@ bool JL::buttonErase(){//up & down, followed by 6xstop and 1xup
 	if (_btnPressed.btn != BUTTON_ERASE) return false;
 	PRINTLN("JL::buttonErase() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     _cc1101->setTxState();  //
     for (int i = 0; i<6;i++){//six times stop
     	delay(800);
     	updateDiscriminator(BUTTON_STOP);
-    	generateHopCode(_chGrp, &_discriminator);
-    	senden(_btnPressed.btnCode());
+    	generateHopCode(&_discriminator);
+    	send(_btnPressed.btnCode());
     }
     delay(1000);
     updateDiscriminator(BUTTON_UP);         //one time up
-    generateHopCode(_chGrp, &_discriminator);
-    senden(_btnPressed.btnCode());
+    generateHopCode(&_discriminator);
+    send(_btnPressed.btnCode());
     _cc1101->setIdleState();//
 
 
@@ -402,14 +498,14 @@ bool JL::buttonCopy(){//up & down, followed by 6xstop and 1xup
 	if (_btnPressed.btn != BUTTON_COPY) return false;
 	PRINTLN("JL::buttonCopy() called");
 	entertx();
-	senden(_btnPressed.btnCode());
+	send(_btnPressed.btnCode());
 	enterrx();
     _cc1101->setTxState();  //
     for (int i = 0; i<8;i++){//eight times stop
     	delay(800);
     	updateDiscriminator(BUTTON_STOP);
-    	generateHopCode(_chGrp, &_discriminator);
-    	senden(_btnPressed.btnCode());
+    	generateHopCode(&_discriminator);
+    	send(_btnPressed.btnCode());
     }
     _cc1101->setIdleState();//
 
@@ -426,80 +522,71 @@ void JL::updateDiscriminator(String button){
 
 //Simple TX routine.
 //Send code two times. In case of one shutter did not "hear" the command.
-void JL::senden(uint8_t btnCode) {
-  //entertx();
+void JL::send(uint8_t btnCode, uint8_t repeat) {
 	uint64_t data = btnCode;
-	uint64_t pack = 0;
-	pack = data << 60;
+	uint64_t payload = 0;
+	payload = data << 60;
 	data = _discriminator.serialN;
 	data = data << 32;
-	pack = pack | data;
+	payload = payload | data;
 	data = _hopCode;
-	pack = pack | data;
-	myprint(pack);
-  for (int i = 0; i < 2; i++)
-  {
-    digitalWrite(4, LOW);//CC1101 in TX Mode+
-    delayMicroseconds(1150);
-    frame(10);
-    delayMicroseconds(3500);//Waittime
-    for (int i = 0; i < 64; i++) {
-      int out = ((pack >> i) & 0x1);//Bitmask to get MSB and send it first
-      if (out == 0x1)
-      {
-        digitalWrite(4, LOW);//Simple encoding of Bit state 1
-        delayMicroseconds(Lowpulse);
-        digitalWrite(4, HIGH);
-        delayMicroseconds(Highpulse);
-      }
-      else
-      {
-        digitalWrite(4, LOW);//Simple encoding of Bit state 0
-        delayMicroseconds(Highpulse);
-        digitalWrite(4, HIGH);
-        delayMicroseconds(Lowpulse);
-      }
-    }
-    group_h(); //Last 8Bit. For motor 8-16.
-    delayMicroseconds(2500);
-
-  }
-
+	payload = payload | data;
+	//myprint(payload);
+	PRINT64(payload);
+	while (repeat > 0)
+	{
+		transmitWakeUp();
+		transmitPayload(payload);
+    	repeat--;
+	}
 }
 
 
-//Sending of high_group_bits 8-16
-void JL::group_h() {
-  for (int i = 0; i < 8; i++) {
-
-    int out = ((_discriminator.part2() >> i) & 0x1);//Bitmask to get MSB and send it first
-    if (out == 0x1)
-    {
-      digitalWrite(4, LOW);//Simple encoding of Bit state 1
-      delayMicroseconds(Lowpulse);
-      digitalWrite(4, HIGH);
-      delayMicroseconds(Highpulse);
-    }
-    else
-    {
-      digitalWrite(4, LOW);//Simple encoding of Bit state 0
-      delayMicroseconds(Highpulse);
-      digitalWrite(4, HIGH);
-      delayMicroseconds(Lowpulse);
-    }
-  }
+void JL::transmitWakeUp(int repeat) {
+  digitalWrite(TX_PIN, LOW);//CC1101 in TX Mode+
+  delayMicros(1150);
+  for (int i = 0; i < repeat; ++i) {
+	  send0();
+  };
+  delayMicros(3500);//pause
 }
 
-//Generates sync-pulses
-
-void JL::frame(int l) {
-  for (int i = 0; i < l; ++i) {
-    digitalWrite(4, LOW);
-    delayMicroseconds(Highpulse);
-    digitalWrite(4, HIGH);
-    delayMicroseconds(Lowpulse);
-  }
+void JL::transmitPayload(uint64_t payload){
+	for (int i = 0; i < 64; i++) {
+		int out = ((payload >> i) & 0x1);//shift mask
+		if ( out == 0x1 ){
+			send1();
+		}
+		else {
+			send0();
+		};
+	};
+	for (int i = 0; i < 8; i++) {//for group addressing receiver/channel 8-16.
+	    int out = ((_discriminator.part2() >> i) & 0x1);
+	    if (out == 0x1){
+	    	send1();
+	    }
+	    else {
+	    	send0();
+	    };
+	};
+	delayMicros(2500);
 }
+
+void JL::send0(){//PWM
+    digitalWrite(TX_PIN, LOW);
+    delayMicros(LONG_PULSE);
+    digitalWrite(TX_PIN, HIGH);
+    delayMicros(SHORT_PULSE);
+}
+
+void JL::send1(){//PWM
+	digitalWrite(TX_PIN, LOW);
+	delayMicros(SHORT_PULSE);
+	digitalWrite(TX_PIN, HIGH);
+	delayMicros(LONG_PULSE);
+}
+
 
 void JL::delayMicros(uint32_t d) {
 #ifdef SYS_DELAY
@@ -510,19 +597,4 @@ void JL::delayMicros(uint32_t d) {
 #endif
 }
 
-//https://forum.arduino.cc/index.php?topic=378359.0
-//#include <math.h>
-void JL::myprint(uint64_t value)
-{
-    const int NUM_DIGITS    = log10(value) + 1;
 
-    char sz[NUM_DIGITS + 1];
-
-    sz[NUM_DIGITS] =  0;
-    for ( size_t i = NUM_DIGITS; i--; value /= 10)
-    {
-        sz[i] = '0' + (value % 10);
-    }
-
-    Serial.print(sz);
-}

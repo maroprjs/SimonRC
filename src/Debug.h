@@ -10,12 +10,12 @@
 
 
 
-
+	String formatBytes(size_t bytes);//TODO: get this out of here
+	void myprint(uint64_t value);
 
 #define DEBUG
 #ifdef DEBUG
     #include <FS.h>
-	String formatBytes(size_t bytes);//TODO: get this out of here
 	#define PRINT_INIT(x)	Serial.begin(x)
 	#define PRINT(x)  	Serial.print(x)
 	#define PRINTLN(x)  Serial.println(x)
@@ -25,7 +25,6 @@
 	#define PROJECT_NAME "remote"
 	#define ZVERSION "debug xxx " + String(__DATE__)
 	#define ZUP_TIME " " + String(millis()/1000) + " [s]"
-	//#define SHOWSPIFFS
 	#define SHOWSPIFFS   \
 						SPIFFS.begin();\
 						{\
@@ -38,6 +37,7 @@
 							Serial.printf("\n");\
 						}
 
+    #define PRINT64(x)	myprint(x)
 
 
 
@@ -49,6 +49,7 @@
 	#define PRINTLNH(...)
     #define DBGOUTPUT(...)
 	#define SHOWSPIFFS
+	#define PRINT64(...)
 	#define PROJECT_NAME "remote"
 	#define ZVERSION "xxxx" + String(__DATE__)
 	#define ZUP_TIME " " + String(millis()/1000) + " [s]"

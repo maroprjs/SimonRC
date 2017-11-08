@@ -46,7 +46,15 @@ bool Channel::deserialize(channel_t& ch, String json)
     return root.success();
 }
 
+void Channel::serialize(JsonObject& root)
+{
+    root["chIdx"] = _channel.channelIdx;
+    root["alias"] = _channel.alias;
+    root["address"] = _channel.address;
+    root["groupIdx"] = _channel.groupIdx;
+}
+
 void Channel::activateChannel(){
-	PRINT("in Channel::activateChannel() true");
+	PRINTLN("in Channel::activateChannel() = true");
 	_channelActive = true;
 }

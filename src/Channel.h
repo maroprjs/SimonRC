@@ -13,6 +13,9 @@
 #include <ArduinoJson.h>
 //#include "ChannelGroup.h"
 
+#define UNDEFINED_HEX_BYTE 0xFF
+#define UNDEFINED_STRG ""
+
 class Channel {
 	public:
 
@@ -37,11 +40,14 @@ public:
     int groupIdx() const {return _channel.groupIdx;}
     void groupIdx(int groupIdx) {_channel.groupIdx = groupIdx;}
     bool deserialize(channel_t& data, String json);
+    void serialize(JsonObject& root);
     void activateChannel();
     void deactivate(){_channelActive = false;};
     bool active() {return _channelActive;};
     String address() {return _channel.address;};
+    void address(String address) {_channel.address = address;};
     String alias() {return _channel.alias;};
+    void alias(String alias) {_channel.alias = alias;};
 
 private:
     channel_t _channel;

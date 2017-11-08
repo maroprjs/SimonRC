@@ -1,11 +1,12 @@
 /*
- * WebGui.cpp
+ * WebUI_HttpServer.cpp
  *
  *  Created on: 09.05.2017
  *      Author: maro
  */
 
-#include "WebGui.h"
+#include "WebUI_HttpServer.h"
+
 #include "Debug.h"
 #include<algorithm> //needed for std:for_each(..); ref: http://stackoverflow.com/questions/30706652/for-each-is-not-a-member-of-std-c11-support-already-enabled
 
@@ -13,42 +14,51 @@
 
 
 
-WebGui::WebGui(ESP8266WebServer *server, Storage *storage, User* user,Network * network, DNSServer * dnsServer) {
-	_server = server;
-	_storage = storage;
-	_user = user;
-	_network = network;
-	_dnsServer = dnsServer;
-
-}
-//WebGui::WebGui() {
+//WebUI_HttpServer::WebUI_HttpServer(ESP8266WebServer *server, Storage *storage, User* user,Network * network, DNSServer * dnsServer) {
+	//_server = server;
+	//_storage = storage;
+	///_user = user;
+	//_network = network;
+	//_dnsServer = dnsServer;
 
 //}
 
-WebGui::~WebGui() {
+WebUI_HttpServer::WebUI_HttpServer(HttpServer *server) {
+	_server = server;
+	//_storage = storage;
+	///_user = user;
+	//_network = network;
+	//_dnsServer = dnsServer;
+
+}
+//WebUI_HttpServer::WebUI_HttpServer() {
+
+//}
+
+WebUI_HttpServer::~WebUI_HttpServer() {
 	// TODO Auto-generated destructor stub
 }
 
-void WebGui::begin() {
+void WebUI_HttpServer::begin() {
 	SHOWSPIFFS;//TODO: include spiffs.begin also in non debug modus
 	//from: https://community.platformio.org/t/esp8266webserver-inside-custom-class/237
-	//_server->onFileUpload(std::bind(&WebGui::handleRoot2, this));
-	_server->on("/",std::bind(&WebGui::handleRoot, this));
-	_server->on("/favicon.ico", [this]() { _server->send(200, "text/html", "");   });
-	_server->on("/browse", std::bind(&WebGui::handleFileBrowser, this));
-	_server->on("/upload", HTTP_POST, [this]() { _server->send(200, "text/plain", ""); }, std::bind(&WebGui::handleFileUpload, this));
-	_server->on("/jsonsave", std::bind(&WebGui::handleJsonSave, this));
-	_server->on("/jsonload", std::bind(&WebGui::handleJsonLoad, this));
-	_server->on("/formatspiff", std::bind(&WebGui::formatspiffs, this));
-	//_server->on("/generate_204",std::bind(&WebGui::handleRoot2, this));
+	//_server->onFileUpload(std::bind(&WebUI_HttpServer::handleRoot2, this));
+	_server->http()->on("/",std::bind(&WebUI_HttpServer::handleRoot, this));
+	_server->http()->on("/favicon.ico", [this]() { _server->http()->send(200, "text/html", "");   });
+	_server->http()->on("/browse", std::bind(&WebUI_HttpServer::handleFileBrowser, this));
+	_server->http()->on("/upload", HTTP_POST, [this]() { _server->http()->send(200, "text/plain", ""); }, std::bind(&WebUI_HttpServer::handleFileUpload, this));
+	_server->http()->on("/jsonsave", std::bind(&WebUI_HttpServer::handleJsonSave, this));
+	_server->http()->on("/jsonload", std::bind(&WebUI_HttpServer::handleJsonLoad, this));
+	_server->http()->on("/formatspiff", std::bind(&WebUI_HttpServer::formatspiffs, this));
+	//_server->on("/generate_204",std::bind(&WebUI_HttpServer::handleRoot2, this));
 	  //server.on("/generate_204", handleRoot);  //Android captive portal. Maybe not needed. Might be handled by notFound handler.
 	  //server.on("/fwlink", handleRoot);  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
-	_server->onNotFound([this](){
+	_server->http()->onNotFound([this](){
 		PRINTLN("_server->onNotFound([this]()");
-		_network->stopDNS();
-		PRINT("server uri: ");PRINTLN(_server->uri());
-		if(!handleFileRead(_server->uri()))_server->send(404, "text/plain", "FileNotFound");
-		_network->startDNS();
+		_server->network()->stopDNS();
+		PRINT("server uri: ");PRINTLN(_server->http()->uri());
+		if(!handleFileRead(_server->http()->uri()))_server->http()->send(404, "text/plain", "FileNotFound");
+		_server->network()->startDNS();
 	});
 
 	CheckNewSystem();
@@ -57,31 +67,36 @@ void WebGui::begin() {
 
 }
 
-void WebGui::formatspiffs()
+void WebUI_HttpServer::handle(){
+
+	//TODO: What'll be here?
+}
+
+void WebUI_HttpServer::formatspiffs()
 {
-	if (_user->isAdmin() == false) return;
+	if (_server->user()->isAdmin() == false) return;
 	PRINTLN("formatting spiff...");
 	if (!SPIFFS.format()) {
 		PRINTLN("Format failed");
 	}
 	else { PRINTLN("format done...."); }
-	_server->send(200, "text/html", "Format Finished....rebooting");
+	_server->http()->send(200, "text/html", "Format Finished....rebooting");
 }
 
-void WebGui::handleRoot2(){
+void WebUI_HttpServer::handleRoot2(){
 	//PRINTLN("204 generated");
-	_network->stopDNS();
-	_dnsServer->stop();
+	_server->network()->stopDNS();
+	_server->dnsServer()->stop();
 
 }
-void WebGui::handleRoot(){//handles root of website (used in case of virgin systems.)
+void WebUI_HttpServer::handleRoot(){//handles root of website (used in case of virgin systems.)
 
-	_network->stopDNS();
+	_server->network()->stopDNS();
 	  if (!handleFileRead("/")) {   //if new system without index we either show wifisetup or if already setup/connected we show filebrowser for config.
 		  PRINTLN("handleRoot() no index.html found");
-		  if (_user->isAdmin())
+		  if (_server->user()->isAdmin())
 		  {
-	    	 if (_network->connectionFailed()) {
+	    	 if (_server->network()->connectionFailed()) {
 	    		 PRINTLN("calling  handleWifiConfig();");
 	    		 handleWifiConfig();
 	    	 } else {
@@ -90,45 +105,45 @@ void WebGui::handleRoot(){//handles root of website (used in case of virgin syst
 	    	 }
 	      }
 	  }
-	  _network->startDNS();
+	  _server->network()->startDNS();
 
 }
 
-void WebGui::handleWifiConfig() {
+void WebUI_HttpServer::handleWifiConfig() {
 	//send GZ version of embedded config
-	_server->sendHeader("Content-Encoding", "gzip");
-	_server->send_P(200, "text/html", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP));
+	_server->http()->sendHeader("Content-Encoding", "gzip");
+	_server->http()->send_P(200, "text/html", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP));
 }
 
-void WebGui::handleFileBrowser(){
-	  if (_user->isAdmin() == false) return;
-	  if (_server->arg("do") == "list") {
+void WebUI_HttpServer::handleFileBrowser(){
+	  if (_server->user()->isAdmin() == false) return;
+	  if (_server->http()->arg("do") == "list") {
 	    handleFileList();
 	  }
 	  else
-	    if (_server->arg("do") == "delete") {
-	      handleFileDelete(_server->arg("file"));
+	    if (_server->http()->arg("do") == "delete") {
+	      handleFileDelete(_server->http()->arg("file"));
 	    }
 	    else
-	      if (_server->arg("do") == "download") {
-	        handleFileDownload(_server->arg("file"));
+	      if (_server->http()->arg("do") == "download") {
+	        handleFileDownload(_server->http()->arg("file"));
 	      }
 	      else
 	      {
 	        if (!handleFileRead("/filebrowse.html")) { //send GZ version of embedded browser
 	        						PRINTLN("calling handleFileRead(/filebrowse.html) unsuccessful");
-	                                _server->sendHeader("Content-Encoding", "gzip");
-	                                _server->send_P(200, "text/html", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE));
+	                                _server->http()->sendHeader("Content-Encoding", "gzip");
+	                                _server->http()->send_P(200, "text/html", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE));
 	                             }
 	        //TODO: implment semaphore ->MyWebServer.isDownloading = true; //need to stop all cloud services from doing anything!  crashes on upload with mqtt...
 	      }
 
 }
 
-void WebGui::handleFileList()
+void WebUI_HttpServer::handleFileList()
 {
 	PRINTLN("handleFileList() called");
-	if (_user->isAdmin() == false) return;
+	if (_server->user()->isAdmin() == false) return;
 	Dir dir = SPIFFS.openDir("/");//TODO: use storage
 
 	String output = "{\"success\":true, \"is_writable\" : true, \"results\" :[";
@@ -155,25 +170,25 @@ void WebGui::handleFileList()
 	}
 	output += "]}";
 	//PRINTLN("got list >"+output);
-	_server->send(200, "text/json", output);
+	_server->http()->send(200, "text/json", output);
 }
 
-void WebGui::handleFileDelete(String fname)
+void WebUI_HttpServer::handleFileDelete(String fname)
 {
 	PRINTLN("handleFileDelete() called");
-	if (_user->isAdmin() == false) return;
+	if (_server->user()->isAdmin() == false) return;
 	PRINTLN("handleFileDelete: " + fname);
 	fname = '/' + fname;
 	fname = urldecode(fname);
-	if (!SPIFFS.exists(fname)) return _server->send(404, "text/plain", "FileNotFound");
+	if (!SPIFFS.exists(fname)) return _server->http()->send(404, "text/plain", "FileNotFound");
 	if (SPIFFS.exists(fname))//TODO: use storage
 	{
 		SPIFFS.remove(fname);
-		_server->send(200, "text/plain", "");
+		_server->http()->send(200, "text/plain", "");
 	}
 }
 
-bool WebGui::handleFileDownload(String fname)
+bool WebUI_HttpServer::handleFileDownload(String fname)
 {
   PRINTLN("handleFileDownload: " + fname);
   String contentType = "application/octet-stream";
@@ -181,43 +196,43 @@ bool WebGui::handleFileDownload(String fname)
   fname = urldecode(fname);
   if (isPublicFile(fname) == false)
   {
-    if (_user->isAdmin() == false) return false;
+    if (_server->user()->isAdmin() == false) return false;
   }  //check if a public file.
 
   if (SPIFFS.exists(fname)) {//TODO: use storage
     File file = SPIFFS.open(fname, "r");
-    _server->streamFile(file, contentType);
+    _server->http()->streamFile(file, contentType);
     file.close();
     return true;
   }
   return false;
 }
 
-bool WebGui::handleFileRead(String path){
+bool WebUI_HttpServer::handleFileRead(String path){
 	PRINTLN("handleFileRead: " + path);
 	if (path.endsWith("/")) path += "index.html";
 	String contentType = getContentType(path);
 	String pathWithGz = path + ".gz";
 	path = urldecode(path);
 	if (isPublicFile(path) == false) {
-		if (_user->isAdmin() == false) return false;  //check if a public file.
+		if (_server->user()->isAdmin() == false) return false;  //check if a public file.
 	}
 	if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {//TODO: storage
 			if (SPIFFS.exists(pathWithGz)) path += ".gz";
 			File file = SPIFFS.open(path, "r");
 			PRINT("filesize: ");PRINTLN(file.size());
-			_server->streamFile(file, contentType);
+			_server->http()->streamFile(file, contentType);
 			file.close();
 			return true;
 	}
 	return false;
 }
 
-void WebGui::handleFileUpload(){
-	  if (_server->uri() != "/upload") return;
-	  if (_user->isAdmin() == false) return;
+void WebUI_HttpServer::handleFileUpload(){
+	  if (_server->http()->uri() != "/upload") return;
+	  if (_server->user()->isAdmin() == false) return;
 	  //TODO: implement semaphore MyWebServer.isDownloading = true;
-	  HTTPUpload& upload = _server->upload();
+	  HTTPUpload& upload = _server->http()->upload();
 	  if (upload.status == UPLOAD_FILE_START) {
 	    String filename = upload.filename;
 	    if (!filename.startsWith("/")) filename = "/" + filename;
@@ -238,57 +253,57 @@ void WebGui::handleFileUpload(){
 }
 
 
-void WebGui::handleJsonSave()
+void WebUI_HttpServer::handleJsonSave()
 {
 
-	if (_server->args() == 0)
-		return _server->send(500, "text/plain", "BAD JsonSave ARGS");
+	if (_server->http()->args() == 0)
+		return _server->http()->send(500, "text/plain", "BAD JsonSave ARGS");
 
-	String fname = "/" + _server->arg(0);
+	String fname = "/" + _server->http()->arg(0);
 	fname = urldecode(fname);
 
 	PRINTLN("handleJsonSave: " + fname);
 
 	if (isPublicFile(fname) == false)
 	{
-		if (_user->isAdmin() == false) return;  //check if a public file.
+		if (_server->user()->isAdmin() == false) return;  //check if a public file.
 	}
 
 	File file = SPIFFS.open(fname, "w");//TODO_ move to storage
 	if (file) {
-		file.println(_server->arg(1));  //save json data
+		file.println(_server->http()->arg(1));  //save json data
 		file.close();
 	}
 	else  //cant create file
-		return _server->send(500, "text/plain", "JSONSave FAILED");
-	_server->send(200, "text/plain", "");
+		return _server->http()->send(500, "text/plain", "JSONSave FAILED");
+	_server->http()->send(200, "text/plain", "");
 
 	//if (jsonSaveHandle != NULL)	jsonSaveHandle(fname);TODO: implement this
 }
 
-void WebGui::handleJsonLoad()
+void WebUI_HttpServer::handleJsonLoad()
 {
 
-	if (_server->args() == 0)
-		return _server->send(500, "text/plain", "BAD JsonLoad ARGS");
-	String fname = "/" + _server->arg(0);
+	if (_server->http()->args() == 0)
+		return _server->http()->send(500, "text/plain", "BAD JsonLoad ARGS");
+	String fname = "/" + _server->http()->arg(0);
 
 	fname = urldecode(fname);
 	PRINTLN("handleJsonRead: " + fname);
 
 	if (isPublicFile(fname) == false)
 	{
-		if (_user->isAdmin() == false) return;  //check if a public file.
+		if (_server->user()->isAdmin() == false) return;  //check if a public file.
 	}
 
 	File file = SPIFFS.open(fname, "r");//TODO:storage
 	if (file) {
-		_server->streamFile(file, "application/json");
+		_server->http()->streamFile(file, "application/json");
 		file.close();
 	}
 }
 
-void WebGui::CheckNewSystem() {   //if new system we save the embedded htmls into the root of Spiffs as .gz!
+void WebUI_HttpServer::CheckNewSystem() {   //if new system we save the embedded htmls into the root of Spiffs as .gz!
 
 	FileSaveContent_P("/wifisetup.html.gz", PAGE_WIFISETUP, sizeof(PAGE_WIFISETUP), false);
 	FileSaveContent_P("/filebrowse.html.gz", PAGE_FSBROWSE, sizeof(PAGE_FSBROWSE), false);
@@ -296,7 +311,7 @@ void WebGui::CheckNewSystem() {   //if new system we save the embedded htmls int
 
 }
 
-void WebGui::FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
+void WebUI_HttpServer::FileSaveContent_P(String fname, PGM_P content, u_long numbytes, bool overWrite = false) {   //save PROGMEM array to spiffs file....//f must be already open for write!
 
 	if (SPIFFS.exists(fname) && overWrite == false) return;//TODO: storage
 
@@ -332,7 +347,7 @@ void WebGui::FileSaveContent_P(String fname, PGM_P content, u_long numbytes, boo
 }
 
 //reference: http://stackoverflow.com/questions/3257896/c-for-each-calling-a-vector-of-callback-functions-and-passing-each-one-an-argu
-//void WebGui::addCustomFunction(customFunction_t cb, String serverPath){
+//void WebUI_HttpServer::addCustomFunction(customFunction_t cb, String serverPath){
 	 //_customFunctionList.push_back(cb);
 	// _customServerPathList.push_back(serverPath);
 	//_customFunctionRecord.customFunctionList.push_back(cb);
@@ -346,24 +361,24 @@ void WebGui::FileSaveContent_P(String fname, PGM_P content, u_long numbytes, boo
 //}
 
 //reference: http://stackoverflow.com/questions/3257896/c-for-each-calling-a-vector-of-callback-functions-and-passing-each-one-an-argu
-//void WebGui::handleCustomFunctions() {
+//void WebUI_HttpServer::handleCustomFunctions() {
 	//int i = 0;
 //	PRINTLN("in handleCustomFunctions");
 //	std::vector<customFunctionRecord_t>::const_iterator cfr;
 	//std::for_each(_customFunctionList.begin(), _customFunctionList.end(), std::ref(*this));
 //    for(cfr=_customFunctionRecordVector.begin(); cfr!=_customFunctionRecordVector.end(); ++cfr){
-    	//_server->on(cfr.customServerPath, std::bind(&WebGui::handleCustomFunctions, this));
+    	//_server->on(cfr.customServerPath, std::bind(&WebUI_HttpServer::handleCustomFunctions, this));
  //   	PRINTLN(cfr->customServerPath);
  //   	_server->on((const char*)cfr->customServerPath.c_str(), cfr->customFunction);
  //   }
 //}
 
 
-bool WebGui::isPublicFile(String filename)  //in Public mode,  display any file that doesn't have a $$$, or they will need admin access....
+bool WebUI_HttpServer::isPublicFile(String filename)  //in Public mode,  display any file that doesn't have a $$$, or they will need admin access....
 {
 	bool isPub = false;
 
-	if (_user->allowPublic())
+	if (_server->user()->allowPublic())
 	{
 		if (filename.indexOf("$$$") < 0) isPub = true;   //if no $ in filename then allow file to be used/viewed.
 		if (filename.indexOf("wifiset") >= 0) isPub = false;   //hardcode wifiset cannot be public.....
@@ -372,8 +387,8 @@ bool WebGui::isPublicFile(String filename)  //in Public mode,  display any file 
 	return isPub;
 }
 
-String WebGui::getContentType(String filename){
-  if(_server->hasArg("download")) return "application/octet-stream";
+String WebUI_HttpServer::getContentType(String filename){
+  if(_server->http()->hasArg("download")) return "application/octet-stream";
   else if(filename.endsWith(".htm")) return "text/html";
   else if(filename.endsWith(".html")) return "text/html";
   else if(filename.endsWith(".css")) return "text/css";
@@ -389,7 +404,7 @@ String WebGui::getContentType(String filename){
   return "text/plain";
 }
 
-String WebGui::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
+String WebUI_HttpServer::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
 {
   char c;
   String ret = "";
@@ -416,7 +431,7 @@ String WebGui::urldecode(String input) // (based on https://code.google.com/p/av
 
 
 // convert a single hex digit character to its integer value (from https://code.google.com/p/avr-netino/)
-unsigned char WebGui::h2int(char c)
+unsigned char WebUI_HttpServer::h2int(char c)
 {
   if (c >= '0' && c <= '9') {
     return((unsigned char)c - '0');
